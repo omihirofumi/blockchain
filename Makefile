@@ -6,3 +6,6 @@ build:
 start:
 	@echo "Starting blockchain server..."
 	@bin/blockchain
+
+test:
+	@go test -race ./...
