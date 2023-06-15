@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
+	"github.com/labstack/echo/v4"
 	"net/http"
 )
 
-func (bs *BlockchainServer) HelloWorld(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "%s", "Hello world!")
+func (bs *BlockchainServer) HelloWorld(c echo.Context) error {
+	return c.String(http.StatusOK, "Hello, World!")
 }

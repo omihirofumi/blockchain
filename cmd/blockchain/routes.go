@@ -1,15 +1,14 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
+	"github.com/labstack/echo/v4"
 	"net/http"
 )
 
 func (bs *BlockchainServer) routes() http.Handler {
-	r := mux.NewRouter()
+	e := echo.New()
 
-	// 仮
-	r.HandleFunc("/", bs.HelloWorld)
+	e.GET("/", bs.HelloWorld)
 
-	return r
+	return e
 }
