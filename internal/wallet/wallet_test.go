@@ -11,4 +11,5 @@ func TestNewWallet(t *testing.T) {
 	require.NoError(t, err)
 	log.Println(w.PublicKeyStr())
 	log.Println(w.PrivateKeyStr())
+	log.Println(w.BlockchainAddress())
 }
