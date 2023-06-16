@@ -6,6 +6,7 @@ import (
 )
 
 func TestBlockchain(t *testing.T) {
+	t.Parallel()
 	bc := NewBlockChain("my address")
 	require.Equal(t, 0, bc.chain[0].nonce)
 	require.Equal(t, "my address", bc.blockchainAddress)
@@ -25,13 +26,14 @@ func TestBlockchain(t *testing.T) {
 	bc.AddTransaction("from1", "to1", 100)
 	bc.AddTransaction("from2", "to2", 200)
 	bc.AddTransaction("from3", "to3", 300)
-	want := NewTransaction("from1", "to1", 100)
+	wantTransaction := NewTransaction("from1", "to1", 100)
 
-	require.Equal(t, want, bc.transactionPool[0])
+	require.Equal(t, wantTransaction, bc.transactionPool[0])
 	require.Equal(t, 3, len(bc.transactionPool))
 }
 
 func TestAddTransaction(t *testing.T) {
+	t.Parallel()
 	ts := NewTransaction("from", "to", 100)
 	require.Equal(t, "from", ts.senderBlockchainAddr)
 	require.Equal(t, "to", ts.recipientBlockchainAddr)
@@ -39,10 +41,29 @@ func TestAddTransaction(t *testing.T) {
 }
 
 func TestMining(t *testing.T) {
+	t.Parallel()
 	bc := NewBlockChain("my_address")
 	bc.AddTransaction("A", "B", 1.0)
 	result := bc.Mining()
 	require.Equal(t, true, result)
 	want := &Transaction{MINING_SENDER, "my_address", MINING_REWARD}
-	require.Equal(t, want, bc.transactionPool[1])
+	require.Equal(t, want, bc.chain[1].transactions[1])
+}
+
+func TestGetTotalAmount(t *testing.T) {
+	t.Parallel()
+	bc := NewBlockChain("first_blockchain_address")
+	bc.AddTransaction("first_blockchain_address", "A", 1.0)
+	bc.AddTransaction("first_blockchain_address", "B", 1.0)
+	bc.Mining()
+	require.Equal(t, float32(1.0), bc.GetTotalAmount("A"))
+	require.Equal(t, float32(1.0), bc.GetTotalAmount("B"))
+	require.Equal(t, float32(MINING_REWARD-2), bc.GetTotalAmount("first_blockchain_address"))
+	bc.AddTransaction("A", "first_blockchain_address", 1.0)
+	bc.AddTransaction("B", "first_blockchain_address", 1.0)
+	bc.Mining()
+	require.Equal(t, float32(0.0), bc.GetTotalAmount("A"))
+	require.Equal(t, float32(0.0), bc.GetTotalAmount("B"))
+	require.Equal(t, float32(MINING_REWARD*2), bc.GetTotalAmount("first_blockchain_address"))
+
 }
