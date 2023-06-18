@@ -5,17 +5,21 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"github.com/btcsuite/btcutil/base58"
 	"golang.org/x/crypto/ripemd160"
+	"math/big"
 )
 
+// Wallet は仮想通貨のウォレットを表す
 type Wallet struct {
 	privateKey        *ecdsa.PrivateKey
 	publicKey         *ecdsa.PublicKey
 	blockchainAddress string
 }
 
+// NewWallet はウォレットを生成する
 func NewWallet() (*Wallet, error) {
 	// 参考：https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
 	// 0 - Having a private ECDSA key
@@ -70,22 +74,86 @@ func NewWallet() (*Wallet, error) {
 	}, nil
 }
 
+// PrivateKey はプライベートキーを返す
 func (w *Wallet) PrivateKey() *ecdsa.PrivateKey {
 	return w.privateKey
 }
 
+// PrivateKeyStr はプライベートキーの文字列を返す
 func (w *Wallet) PrivateKeyStr() string {
 	return fmt.Sprintf("%x", w.privateKey.D.Bytes())
 }
 
+// PublicKey はプライベートキーを返す
 func (w *Wallet) PublicKey() *ecdsa.PublicKey {
 	return w.publicKey
 }
 
+// PublicKeyStr はプライベートキーの文字列を返す
 func (w *Wallet) PublicKeyStr() string {
 	return fmt.Sprintf("%x%x", w.publicKey.X.Bytes(), w.publicKey.Y.Bytes())
 }
 
+// BlockchainAddress はブロックチェーンアドレスを返す
 func (w *Wallet) BlockchainAddress() string {
 	return w.blockchainAddress
+}
+
+// Transaction トランザクションを表す
+type Transaction struct {
+	senderPrivateKey           *ecdsa.PrivateKey
+	senderPublicKey            *ecdsa.PublicKey
+	senderBlockchainAddress    string
+	recipientBlockchainAddress string
+	value                      float32
+}
+
+// NewTransaction はトランザクションを生成する
+func NewTransaction(privateKey *ecdsa.PrivateKey, publicKey *ecdsa.PublicKey,
+	sender string, recipient string, value float32) *Transaction {
+	return &Transaction{
+		senderPrivateKey:           privateKey,
+		senderPublicKey:            publicKey,
+		senderBlockchainAddress:    sender,
+		recipientBlockchainAddress: recipient,
+		value:                      value,
+	}
+}
+
+// GenerateSignature は署名を生成する
+func (t *Transaction) GenerateSignature() (*Signature, error) {
+	m, err := json.Marshal(struct {
+		SenderPrivateKey           *ecdsa.PrivateKey
+		SenderPublicKey            *ecdsa.PublicKey
+		SenderBlockchainAddress    string
+		RecipientBlockchainAddress string
+		Value                      float32
+	}{
+		SenderPrivateKey:           t.senderPrivateKey,
+		SenderPublicKey:            t.senderPublicKey,
+		SenderBlockchainAddress:    t.senderBlockchainAddress,
+		RecipientBlockchainAddress: t.recipientBlockchainAddress,
+		Value:                      t.value,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	h := sha256.Sum256(m)
+	r, s, err := ecdsa.Sign(rand.Reader, t.senderPrivateKey, h[:])
+	if err != nil {
+		return nil, err
+	}
+	return &Signature{r, s}, nil
+}
+
+// Signature は署名を表す
+type Signature struct {
+	R *big.Int
+	S *big.Int
+}
+
+func (s *Signature) String() string {
+	return fmt.Sprintf("%x%X", s.R, s.S)
 }
