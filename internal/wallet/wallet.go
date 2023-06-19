@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/btcsuite/btcutil/base58"
+	"github.com/omihirofumi/crypto-demo-with-blockchain/internal/signature"
 	"golang.org/x/crypto/ripemd160"
-	"math/big"
 )
 
 // Wallet は仮想通貨のウォレットを表す
@@ -20,13 +20,11 @@ type Wallet struct {
 }
 
 // NewWallet はウォレットを生成する
-func NewWallet() (*Wallet, error) {
+func NewWallet() *Wallet {
 	// 参考：https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
 	// 0 - Having a private ECDSA key
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return nil, err
-	}
+	privateKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+
 	// 1 - Take the corresponding public key generated with it (33 bytes, 1 byte 0x02 (y-coord is even), and 32 bytes corresponding to X coordinate)
 	publicKey := &privateKey.PublicKey
 
@@ -71,7 +69,7 @@ func NewWallet() (*Wallet, error) {
 		privateKey:        privateKey,
 		publicKey:         &privateKey.PublicKey,
 		blockchainAddress: address,
-	}, nil
+	}
 }
 
 // PrivateKey はプライベートキーを返す
@@ -121,16 +119,12 @@ func NewTransaction(privateKey *ecdsa.PrivateKey, publicKey *ecdsa.PublicKey,
 }
 
 // GenerateSignature は署名を生成する
-func (t *Transaction) GenerateSignature() (*Signature, error) {
+func (t *Transaction) GenerateSignature() (*signature.Signature, error) {
 	m, err := json.Marshal(struct {
-		SenderPrivateKey           *ecdsa.PrivateKey
-		SenderPublicKey            *ecdsa.PublicKey
 		SenderBlockchainAddress    string
 		RecipientBlockchainAddress string
 		Value                      float32
 	}{
-		SenderPrivateKey:           t.senderPrivateKey,
-		SenderPublicKey:            t.senderPublicKey,
 		SenderBlockchainAddress:    t.senderBlockchainAddress,
 		RecipientBlockchainAddress: t.recipientBlockchainAddress,
 		Value:                      t.value,
@@ -145,15 +139,5 @@ func (t *Transaction) GenerateSignature() (*Signature, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Signature{r, s}, nil
-}
-
-// Signature は署名を表す
-type Signature struct {
-	R *big.Int
-	S *big.Int
-}
-
-func (s *Signature) String() string {
-	return fmt.Sprintf("%x%X", s.R, s.S)
+	return &signature.Signature{R: r, S: s}, nil
 }

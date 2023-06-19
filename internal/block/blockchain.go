@@ -1,9 +1,11 @@
 package block
 
 import (
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/omihirofumi/crypto-demo-with-blockchain/internal/signature"
 	"strings"
 	"time"
 )
@@ -87,10 +89,25 @@ func (bc *Blockchain) LastBlock() *Block {
 	return bc.chain[len(bc.chain)-1]
 }
 
-// AddTransaction はトランザクションのプールにトランザクションを追加する
-func (bc *Blockchain) AddTransaction(sender, recipient string, value float32) {
+// AddTransaction はトランザクションのプールにトランザクションを追加する。 トランザクションの検証に失敗した場合、エラーを返します。
+func (bc *Blockchain) AddTransaction(sender, recipient string, value float32,
+	senderPublicKey *ecdsa.PublicKey, s *signature.Signature) error {
 	t := NewTransaction(sender, recipient, value)
-	bc.transactionPool = append(bc.transactionPool, t)
+	if sender == MINING_SENDER {
+		bc.transactionPool = append(bc.transactionPool, t)
+		return nil
+	}
+
+	if bc.VerifyTransactionSignature(senderPublicKey, s, t) {
+		balance := bc.GetTotalAmount(sender)
+		if balance < value {
+			return fmt.Errorf("残高不足です。残高:%f", balance)
+		}
+		bc.transactionPool = append(bc.transactionPool, t)
+		return nil
+	}
+
+	return fmt.Errorf("トランザクションの検証に失敗しました。")
 }
 
 // ValidProof はナンスの検証をする
@@ -105,7 +122,7 @@ func (bc *Blockchain) ValidProof(nonce int, previousHash [32]byte, transactions 
 func (bc *Blockchain) CopyTransactionPool() []*Transaction {
 	transactions := make([]*Transaction, 0)
 	for _, t := range bc.transactionPool {
-		transactions = append(transactions, NewTransaction(t.senderBlockchainAddr, t.senderBlockchainAddr, t.value))
+		transactions = append(transactions, NewTransaction(t.senderBlockchainAddress, t.senderBlockchainAddress, t.value))
 	}
 	return transactions
 }
@@ -120,12 +137,16 @@ func (bc *Blockchain) ProofOfWork() int {
 	return nonce
 }
 
-func (bc *Blockchain) Mining() bool {
-	bc.AddTransaction(MINING_SENDER, bc.blockchainAddress, MINING_REWARD)
+// Mining は、マイニングを行うメソッド
+func (bc *Blockchain) Mining() error {
+	err := bc.AddTransaction(MINING_SENDER, bc.blockchainAddress, MINING_REWARD, nil, nil)
+	if err != nil {
+		return err
+	}
 	nonce := bc.ProofOfWork()
 	previousHash := bc.LastBlock().Hash()
 	bc.CreateBlock(nonce, previousHash)
-	return true
+	return nil
 }
 
 // GetTotalAmount は対象ブロックチェーンアドレスが所持している額を取得
@@ -133,15 +154,32 @@ func (bc *Blockchain) GetTotalAmount(blockchainAddress string) float32 {
 	var totalAmount float32
 	for _, b := range bc.chain {
 		for _, t := range b.transactions {
-			if t.recipientBlockchainAddr == blockchainAddress {
+			if t.recipientBlockchainAddress == blockchainAddress {
 				totalAmount += t.value
 			}
-			if t.senderBlockchainAddr == blockchainAddress {
+			if t.senderBlockchainAddress == blockchainAddress {
 				totalAmount -= t.value
 			}
 		}
 	}
 	return totalAmount
+}
+
+func (bc *Blockchain) VerifyTransactionSignature(
+	senderPublicKey *ecdsa.PublicKey, s *signature.Signature, t *Transaction) bool {
+	m, _ := json.Marshal(struct {
+		SenderBlockchainAddress    string
+		RecipientBlockchainAddress string
+		Value                      float32
+	}{
+		SenderBlockchainAddress:    t.senderBlockchainAddress,
+		RecipientBlockchainAddress: t.recipientBlockchainAddress,
+		Value:                      t.value,
+	})
+
+	h := sha256.Sum256(m)
+	return ecdsa.Verify(senderPublicKey, h[:], s.R, s.S)
+
 }
 
 func (bc *Blockchain) Print() {
@@ -152,23 +190,23 @@ func (bc *Blockchain) Print() {
 
 // Transaction はトランザクションを表す
 type Transaction struct {
-	senderBlockchainAddr    string
-	recipientBlockchainAddr string
-	value                   float32
+	senderBlockchainAddress    string
+	recipientBlockchainAddress string
+	value                      float32
 }
 
 // NewTransaction はトランザクションを生成する
 func NewTransaction(sender string, recipient string, value float32) *Transaction {
 	return &Transaction{
-		senderBlockchainAddr:    sender,
-		recipientBlockchainAddr: recipient,
-		value:                   value,
+		senderBlockchainAddress:    sender,
+		recipientBlockchainAddress: recipient,
+		value:                      value,
 	}
 }
 
 func (t *Transaction) Print() {
 	fmt.Printf("%s %s %s\n", strings.Repeat("=", 5), "Transaction", strings.Repeat("=", 5))
-	fmt.Printf("sender: %s\n", t.senderBlockchainAddr)
-	fmt.Printf("recipient: %s\n", t.recipientBlockchainAddr)
+	fmt.Printf("sender: %s\n", t.senderBlockchainAddress)
+	fmt.Printf("recipient: %s\n", t.recipientBlockchainAddress)
 	fmt.Printf("value: %f\n", t.value)
 }

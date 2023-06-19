@@ -10,8 +10,7 @@ import (
 )
 
 func TestNewWallet(t *testing.T) {
-	w, err := NewWallet()
-	require.NoError(t, err)
+	w := NewWallet()
 	log.Println(w.PublicKeyStr())
 	log.Println(w.PrivateKeyStr())
 	log.Println(w.BlockchainAddress())

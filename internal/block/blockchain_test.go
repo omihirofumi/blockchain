@@ -1,6 +1,7 @@
 package block
 
 import (
+	"github.com/omihirofumi/crypto-demo-with-blockchain/internal/wallet"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -22,48 +23,52 @@ func TestBlockchain(t *testing.T) {
 	require.Equal(t, wantHash, b2.previousHash)
 
 	require.Equal(t, 3, len(bc.chain))
-
-	bc.AddTransaction("from1", "to1", 100)
-	bc.AddTransaction("from2", "to2", 200)
-	bc.AddTransaction("from3", "to3", 300)
-	wantTransaction := NewTransaction("from1", "to1", 100)
-
-	require.Equal(t, wantTransaction, bc.transactionPool[0])
-	require.Equal(t, 3, len(bc.transactionPool))
 }
 
-func TestAddTransaction(t *testing.T) {
+func TestNewTransaction(t *testing.T) {
 	t.Parallel()
 	ts := NewTransaction("from", "to", 100)
-	require.Equal(t, "from", ts.senderBlockchainAddr)
-	require.Equal(t, "to", ts.recipientBlockchainAddr)
+	require.Equal(t, "from", ts.senderBlockchainAddress)
+	require.Equal(t, "to", ts.recipientBlockchainAddress)
 	require.Equal(t, float32(100), ts.value)
 }
 
-func TestMining(t *testing.T) {
+func TestBlockchain_VerifyTransactionSignature(t *testing.T) {
 	t.Parallel()
-	bc := NewBlockChain("my_address")
-	bc.AddTransaction("A", "B", 1.0)
-	result := bc.Mining()
-	require.Equal(t, true, result)
-	want := &Transaction{MINING_SENDER, "my_address", MINING_REWARD}
-	require.Equal(t, want, bc.chain[1].transactions[1])
+
+	w1 := wallet.NewWallet()
+	w2 := wallet.NewWallet()
+	bc := NewBlockChain(w1.BlockchainAddress())
+	wts := wallet.NewTransaction(w1.PrivateKey(), w1.PublicKey(), w1.BlockchainAddress(), w2.BlockchainAddress(), 1.0)
+	s, err := wts.GenerateSignature()
+	require.NoError(t, err)
+	bts := NewTransaction(w1.BlockchainAddress(), w2.BlockchainAddress(), 1.0)
+	actual := bc.VerifyTransactionSignature(w1.PublicKey(), s, bts)
+	require.Equal(t, true, actual)
 }
 
-func TestGetTotalAmount(t *testing.T) {
+func TestBlockchain_AddTransaction(t *testing.T) {
 	t.Parallel()
-	bc := NewBlockChain("first_blockchain_address")
-	bc.AddTransaction("first_blockchain_address", "A", 1.0)
-	bc.AddTransaction("first_blockchain_address", "B", 1.0)
-	bc.Mining()
-	require.Equal(t, float32(1.0), bc.GetTotalAmount("A"))
-	require.Equal(t, float32(1.0), bc.GetTotalAmount("B"))
-	require.Equal(t, float32(MINING_REWARD-2), bc.GetTotalAmount("first_blockchain_address"))
-	bc.AddTransaction("A", "first_blockchain_address", 1.0)
-	bc.AddTransaction("B", "first_blockchain_address", 1.0)
-	bc.Mining()
-	require.Equal(t, float32(0.0), bc.GetTotalAmount("A"))
-	require.Equal(t, float32(0.0), bc.GetTotalAmount("B"))
-	require.Equal(t, float32(MINING_REWARD*2), bc.GetTotalAmount("first_blockchain_address"))
+
+	w1 := wallet.NewWallet()
+	w2 := wallet.NewWallet()
+	bc := NewBlockChain(w1.BlockchainAddress())
+	err := bc.AddTransaction(MINING_SENDER, w1.BlockchainAddress(), 1.0, nil, nil)
+	require.NoError(t, err)
+	err = bc.Mining()
+	require.NoError(t, err)
+	wts := wallet.NewTransaction(w1.PrivateKey(), w1.PublicKey(), w1.BlockchainAddress(), w2.BlockchainAddress(), 1.0)
+	s, _ := wts.GenerateSignature()
+
+	err = bc.AddTransaction(w1.BlockchainAddress(), w2.BlockchainAddress(), 1.0, w1.PublicKey(), s)
+	require.NoError(t, err)
+	wts = wallet.NewTransaction(w1.PrivateKey(), w1.PublicKey(), w1.BlockchainAddress(), w2.BlockchainAddress(), 100.0)
+	s, _ = wts.GenerateSignature()
+	err = bc.AddTransaction(w1.BlockchainAddress(), w2.BlockchainAddress(), 100.0, w1.PublicKey(), s)
+	require.Error(t, err)
+	wts = wallet.NewTransaction(w1.PrivateKey(), w1.PublicKey(), w1.BlockchainAddress(), w2.BlockchainAddress(), 100.0)
+	s, _ = wts.GenerateSignature()
+	err = bc.AddTransaction(w1.BlockchainAddress(), w1.BlockchainAddress(), 1.0, w1.PublicKey(), s)
+	require.Error(t, err)
 
 }
