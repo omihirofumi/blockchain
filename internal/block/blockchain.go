@@ -182,6 +182,14 @@ func (bc *Blockchain) VerifyTransactionSignature(
 
 }
 
+func (bc *Blockchain) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Chain []*Block `json:"chains"`
+	}{
+		Chain: bc.chain,
+	})
+}
+
 func (bc *Blockchain) Print() {
 	for _, b := range bc.chain {
 		b.Print()

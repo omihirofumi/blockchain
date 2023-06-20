@@ -3,7 +3,7 @@ build:
 	@go build -o bin/blockchain ./cmd/blockchain
 	@echo "Done"
 
-start:
+start: build
 	@echo "Starting blockchain server..."
 	@bin/blockchain
 
