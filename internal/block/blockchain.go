@@ -59,6 +59,20 @@ func (b *Block) Print() {
 	fmt.Println(strings.Repeat("=", 15))
 }
 
+func (b *Block) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Timestamp    int64          `json:"timestamp"`
+		Nonce        int            `json:"nonce"`
+		PreviousHash string         `json:"previousHash"`
+		Transactions []*Transaction `json:"transactions"`
+	}{
+		Timestamp:    b.timestamp,
+		Nonce:        b.nonce,
+		PreviousHash: fmt.Sprintf("%x", b.previousHash),
+		Transactions: b.transactions,
+	})
+}
+
 // Blockchain はブロックチェーンを表す
 type Blockchain struct {
 	transactionPool   []*Transaction
@@ -210,6 +224,18 @@ func NewTransaction(sender string, recipient string, value float32) *Transaction
 		recipientBlockchainAddress: recipient,
 		value:                      value,
 	}
+}
+
+func (t *Transaction) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		SenderBlockchainAddress    string  `json:"senderBlockchainAddress"`
+		RecipientBlockchainAddress string  `json:"recipientBlockchainAddress"`
+		Value                      float32 `json:"value"`
+	}{
+		SenderBlockchainAddress:    t.senderBlockchainAddress,
+		RecipientBlockchainAddress: t.recipientBlockchainAddress,
+		Value:                      t.value,
+	})
 }
 
 func (t *Transaction) Print() {

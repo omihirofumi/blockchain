@@ -9,15 +9,17 @@ import (
 
 type BlockchainServer struct {
 	port     uint16
+	mcPort   uint16
 	infoLog  *log.Logger
 	errorLog *log.Logger
 }
 
-func NewBlockchainServer(port uint16) *BlockchainServer {
+func NewBlockchainServer(port uint16, mcPort uint16) *BlockchainServer {
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime|log.Lshortfile)
 	errorLog := log.New(os.Stdout, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 	return &BlockchainServer{
 		port:     port,
+		mcPort:   mcPort,
 		infoLog:  infoLog,
 		errorLog: errorLog,
 	}
