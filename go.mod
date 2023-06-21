@@ -3,6 +3,7 @@ module github.com/omihirofumi/crypto-demo-with-blockchain
 go 1.19
 
 require (
+	github.com/bradfitz/gomemcache v0.0.0-20230611145640-acc696258285 // indirect
 	github.com/btcsuite/btcutil v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/labstack/echo/v4 v4.10.2 // indirect
