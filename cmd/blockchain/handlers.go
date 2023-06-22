@@ -34,3 +34,20 @@ func (bs *BlockchainServer) GetBlockchainBlob() []byte {
 func (bs *BlockchainServer) GetBlockchain(c echo.Context) error {
 	return c.JSONBlob(http.StatusOK, bs.GetBlockchainBlob())
 }
+
+func (bs *BlockchainServer) CreateTransactions(c echo.Context) error {
+	var payload struct {
+		Error   bool   `json:"error"`
+		Message string `json:"message"`
+	}
+	tr := &block.TransactionRequest{}
+	if err := c.Bind(tr); err != nil {
+		bs.errorLog.Println(err)
+		payload.Error = true
+		payload.Message = err.Error()
+		return echo.NewHTTPError(http.StatusInternalServerError, payload)
+	}
+	payload.Error = false
+	payload.Message = "OK"
+	return c.JSON(http.StatusOK, payload)
+}

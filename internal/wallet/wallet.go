@@ -97,6 +97,18 @@ func (w *Wallet) BlockchainAddress() string {
 	return w.blockchainAddress
 }
 
+func (w *Wallet) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		PrivateKey        string `json:"privateKey"`
+		PublicKey         string `json:"publicKey"`
+		BlockchainAddress string `json:"blockchainAddress"`
+	}{
+		PrivateKey:        w.PrivateKeyStr(),
+		PublicKey:         w.PublicKeyStr(),
+		BlockchainAddress: w.BlockchainAddress(),
+	})
+}
+
 // Transaction トランザクションを表す
 type Transaction struct {
 	senderPrivateKey           *ecdsa.PrivateKey
@@ -140,4 +152,23 @@ func (t *Transaction) GenerateSignature() (*signature.Signature, error) {
 		return nil, err
 	}
 	return &signature.Signature{R: r, S: s}, nil
+}
+
+type TransactionRequest struct {
+	SenderPrivateKey           *string `json:"sender_private_key"`
+	SenderPublicKey            *string `json:"sender_public_key"`
+	SenderBlockchainAddress    *string `json:"sender_blockchain_address"`
+	RecipientBlockchainAddress *string `json:"recipient_blockchain_address"`
+	Value                      *string `json:"value"`
+}
+
+func (tr *TransactionRequest) Validate() bool {
+	if tr.SenderPublicKey == nil ||
+		tr.SenderPrivateKey == nil ||
+		tr.SenderBlockchainAddress == nil ||
+		tr.RecipientBlockchainAddress == nil ||
+		tr.Value == nil {
+		return false
+	}
+	return true
 }

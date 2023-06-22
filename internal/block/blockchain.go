@@ -244,3 +244,22 @@ func (t *Transaction) Print() {
 	fmt.Printf("recipient: %s\n", t.recipientBlockchainAddress)
 	fmt.Printf("value: %f\n", t.value)
 }
+
+type TransactionRequest struct {
+	SenderPublicKey            *string  `json:"sender_public_key"`
+	SenderBlockchainAddress    *string  `json:"sender_blockchain_address"`
+	RecipientBlockchainAddress *string  `json:"recipient_blockchain_address"`
+	Value                      *float32 `json:"value"`
+	Signature                  *string  `json:"signature"`
+}
+
+func (tr *TransactionRequest) Validate() bool {
+	if tr.SenderPublicKey == nil ||
+		tr.SenderBlockchainAddress == nil ||
+		tr.RecipientBlockchainAddress == nil ||
+		tr.Signature == nil ||
+		tr.Value == nil {
+		return false
+	}
+	return true
+}
