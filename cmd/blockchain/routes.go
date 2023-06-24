@@ -15,7 +15,7 @@ func (bs *BlockchainServer) routes() http.Handler {
 	}))
 
 	e.GET("/", bs.HelloWorld)
-	e.GET("/chain", bs.GetBlockchain)
+	e.GET("/chain", bs.GetChain)
 	e.POST("/transactions", bs.CreateTransactions)
 
 	return e

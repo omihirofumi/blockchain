@@ -19,6 +19,7 @@ func (ws *WalletServer) GetWallet(c echo.Context) error {
 	return c.JSON(http.StatusOK, w)
 }
 
+// CreateTransaction は、トランザクションを生成する
 func (ws *WalletServer) CreateTransaction(c echo.Context) error {
 	tr := &wallet.TransactionRequest{}
 	if err := c.Bind(tr); err != nil {
@@ -43,12 +44,12 @@ func (ws *WalletServer) CreateTransaction(c echo.Context) error {
 	value32 := float32(value)
 
 	transaction := wallet.NewTransaction(privateKey, publicKey, *tr.SenderBlockchainAddress, *tr.RecipientBlockchainAddress, value32)
-	s, err := transaction.GenerateSignature()
+	sg, err := transaction.GenerateSignature()
 	if err != nil {
 		ws.errorLog.Println(err)
 		return ws.badRequest(err.Error())
 	}
-	signatureStr := s.String()
+	signatureStr := sg.String()
 
 	btr := &block.TransactionRequest{
 		SenderPublicKey:            tr.SenderPublicKey,

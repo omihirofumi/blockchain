@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/labstack/echo/v4"
 	"github.com/omihirofumi/crypto-demo-with-blockchain/internal/block"
+	"github.com/omihirofumi/crypto-demo-with-blockchain/internal/signature"
 	"github.com/omihirofumi/crypto-demo-with-blockchain/internal/wallet"
 	"net/http"
 )
@@ -31,23 +33,53 @@ func (bs *BlockchainServer) GetBlockchainBlob() []byte {
 	return item.Value
 }
 
-func (bs *BlockchainServer) GetBlockchain(c echo.Context) error {
+func (bs *BlockchainServer) GetBlockchain() (*block.Blockchain, error) {
+	bc := &block.Blockchain{}
+	bb := bs.GetBlockchainBlob()
+	err := json.Unmarshal(bb, bc)
+	if err != nil {
+		return nil, err
+	}
+	return bc, nil
+}
+
+func (bs *BlockchainServer) GetChain(c echo.Context) error {
 	return c.JSONBlob(http.StatusOK, bs.GetBlockchainBlob())
 }
 
 func (bs *BlockchainServer) CreateTransactions(c echo.Context) error {
-	var payload struct {
-		Error   bool   `json:"error"`
-		Message string `json:"message"`
-	}
 	tr := &block.TransactionRequest{}
 	if err := c.Bind(tr); err != nil {
 		bs.errorLog.Println(err)
-		payload.Error = true
-		payload.Message = err.Error()
-		return echo.NewHTTPError(http.StatusInternalServerError, payload)
+		return bs.errResponse(http.StatusInternalServerError, err.Error())
 	}
-	payload.Error = false
-	payload.Message = "OK"
-	return c.JSON(http.StatusOK, payload)
+
+	if !tr.Validate() {
+		bs.errorLog.Printf("missing field(s): %v\n", tr)
+		return bs.errResponse(http.StatusBadRequest, "missing field(s)")
+	}
+
+	publicKey, err := signature.PublicKeyFromString(*tr.SenderPublicKey)
+	if err != nil {
+		bs.errorLog.Println(err)
+		return bs.errResponse(http.StatusBadRequest, err.Error())
+	}
+	sg, err := signature.SignatureFromString(*tr.Signature)
+	if err != nil {
+		bs.errorLog.Println(err)
+		return bs.errResponse(http.StatusBadRequest, err.Error())
+	}
+	bc, err := bs.GetBlockchain()
+	if err != nil {
+		bs.errorLog.Println(err)
+		return bs.errResponse(http.StatusInternalServerError, err.Error())
+	}
+	err = bc.AddTransaction(*tr.SenderBlockchainAddress, *tr.RecipientBlockchainAddress,
+		*tr.Value, publicKey, sg)
+	if err != nil {
+		bs.errorLog.Println(err)
+		return bs.errResponse(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, bc)
 }

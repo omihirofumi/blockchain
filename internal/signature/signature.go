@@ -29,7 +29,7 @@ func string2BigIntTuple(s string) (big.Int, big.Int, error) {
 	var biy big.Int
 
 	bix.SetBytes(bx)
-	bix.SetBytes(by)
+	biy.SetBytes(by)
 	return bix, biy, nil
 }
 
