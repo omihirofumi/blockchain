@@ -1,9 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/labstack/echo/v4"
 	"github.com/omihirofumi/crypto-demo-with-blockchain/internal/block"
 	"github.com/omihirofumi/crypto-demo-with-blockchain/internal/signature"
@@ -15,38 +12,27 @@ const (
 	KEY_BLOCKCHAIN = "blockchain"
 )
 
+var bcCache *block.Blockchain
+
 func (bs *BlockchainServer) HelloWorld(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
 }
 
-// GetBlockchainBlob はmemcachedを探して、ブロックチェーンのバイトを返す。
-func (bs *BlockchainServer) GetBlockchainBlob() []byte {
-	mc := memcache.New(fmt.Sprintf("%s:%d", "127.0.0.1", bs.mcPort))
-	item, err := mc.Get(KEY_BLOCKCHAIN)
-	if err != nil {
+// GetBlockchain は、ブロックチェーンを返す。
+func (bs *BlockchainServer) GetBlockchain() *block.Blockchain {
+	if bcCache == nil {
 		bs.infoLog.Println("blockchain created")
 		w := wallet.NewWallet()
 		bs.infoLog.Printf("mining address is %s\n", w.BlockchainAddress())
 		bc := block.NewBlockChain(w.BlockchainAddress())
-		m, _ := bc.MarshalJSON()
-		mc.Set(&memcache.Item{Key: KEY_BLOCKCHAIN, Value: m})
-		return m
+		bcCache = bc
+		return bc
 	}
-	return item.Value
-}
-
-func (bs *BlockchainServer) GetBlockchain() (*block.Blockchain, error) {
-	bc := &block.Blockchain{}
-	bb := bs.GetBlockchainBlob()
-	err := json.Unmarshal(bb, &bc)
-	if err != nil {
-		return nil, err
-	}
-	return bc, nil
+	return bcCache
 }
 
 func (bs *BlockchainServer) GetChain(c echo.Context) error {
-	return c.JSONBlob(http.StatusOK, bs.GetBlockchainBlob())
+	return c.JSON(http.StatusOK, bs.GetBlockchain())
 }
 
 func (bs *BlockchainServer) CreateTransactions(c echo.Context) error {
@@ -71,11 +57,7 @@ func (bs *BlockchainServer) CreateTransactions(c echo.Context) error {
 		bs.errorLog.Println(err)
 		return bs.errResponse(http.StatusBadRequest, err.Error())
 	}
-	bc, err := bs.GetBlockchain()
-	if err != nil {
-		bs.errorLog.Println(err)
-		return bs.errResponse(http.StatusInternalServerError, err.Error())
-	}
+	bc := bs.GetBlockchain()
 	err = bc.AddTransaction(*tr.SenderBlockchainAddress, *tr.RecipientBlockchainAddress,
 		*tr.Value, publicKey, sg)
 	if err != nil {
@@ -87,12 +69,8 @@ func (bs *BlockchainServer) CreateTransactions(c echo.Context) error {
 }
 
 func (bs *BlockchainServer) Mining(c echo.Context) error {
-	bc, err := bs.GetBlockchain()
-	if err != nil {
-		bs.errorLog.Println(err)
-		return bs.errResponse(http.StatusInternalServerError, "mining failed")
-	}
-	err = bc.Mining()
+	bc := bs.GetBlockchain()
+	err := bc.Mining()
 	if err != nil {
 		bs.errorLog.Println(err)
 		return bs.errResponse(http.StatusInternalServerError, "mining failed")
@@ -106,11 +84,7 @@ func (bs *BlockchainServer) Mining(c echo.Context) error {
 
 func (bs *BlockchainServer) GetTotalAmount(c echo.Context) error {
 	bcAddr := c.Param("blockchainAddress")
-	bc, err := bs.GetBlockchain()
-	if err != nil {
-		bs.errorLog.Println(err)
-		return bs.errResponse(http.StatusInternalServerError, err.Error())
-	}
+	bc := bs.GetBlockchain()
 	amount := bc.GetTotalAmount(bcAddr)
 	payload := struct {
 		Amount float32 `json:"amount"`
