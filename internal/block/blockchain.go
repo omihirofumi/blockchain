@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	MINING_DIFFICULTY = 1
+	MINING_DIFFICULTY = 5
 	MINING_SENDER     = "THE BLOCKCHAIN"
 	MINING_REWARD     = 10.0
 )
@@ -71,6 +71,25 @@ func (b *Block) MarshalJSON() ([]byte, error) {
 		PreviousHash: fmt.Sprintf("%x", b.previousHash),
 		Transactions: b.transactions,
 	})
+}
+
+func (b *Block) UnmarshalJSON(data []byte) error {
+	var d struct {
+		Timestamp    int64
+		Nonce        int
+		PreviousHash string
+		Transactions []*Transaction
+	}
+	if err := json.Unmarshal(data, &d); err != nil {
+		return err
+	}
+	previousHash := [32]byte([]byte(d.PreviousHash))
+
+	b.timestamp = d.Timestamp
+	b.nonce = d.Nonce
+	b.previousHash = previousHash
+	b.transactions = d.Transactions
+	return nil
 }
 
 // Blockchain はブロックチェーンを表す
@@ -198,10 +217,21 @@ func (bc *Blockchain) VerifyTransactionSignature(
 
 func (bc *Blockchain) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Chain []*Block `json:"chains"`
+		Chain []*Block `json:"chain"`
 	}{
 		Chain: bc.chain,
 	})
+}
+
+func (bc *Blockchain) UnmarshalJSON(data []byte) error {
+	var d struct {
+		Chain []*Block
+	}
+	if err := json.Unmarshal(data, &d); err != nil {
+		return err
+	}
+	bc.chain = d.Chain
+	return nil
 }
 
 func (bc *Blockchain) Print() {
