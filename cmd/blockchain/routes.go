@@ -18,6 +18,7 @@ func (bs *BlockchainServer) routes() http.Handler {
 	e.GET("/chain", bs.GetChain)
 	e.GET("/amount/:blockchainAddress", bs.GetTotalAmount)
 	e.GET("/mining", bs.Mining)
+	e.GET("/verify", bs.VerifyChain)
 	e.POST("/transactions", bs.CreateTransactions)
 	return e
 }

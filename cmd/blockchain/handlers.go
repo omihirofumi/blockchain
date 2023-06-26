@@ -82,6 +82,7 @@ func (bs *BlockchainServer) Mining(c echo.Context) error {
 	return c.JSON(http.StatusOK, payload)
 }
 
+// GetTotalAmount は、対象アドレスの総額を計算
 func (bs *BlockchainServer) GetTotalAmount(c echo.Context) error {
 	bcAddr := c.Param("blockchainAddress")
 	bc := bs.GetBlockchain()
@@ -90,6 +91,23 @@ func (bs *BlockchainServer) GetTotalAmount(c echo.Context) error {
 		Amount float32 `json:"amount"`
 	}{
 		Amount: amount,
+	}
+	return c.JSON(http.StatusOK, payload)
+}
+
+// VerifyChain は、チェーンが不正ではないか検証する。
+func (bs *BlockchainServer) VerifyChain(c echo.Context) error {
+	bc := bs.GetBlockchain()
+	var payload struct {
+		Error   bool   `json:"error"`
+		Message string `json:"message"`
+	}
+	if bc.ValidChain() {
+		payload.Error = false
+		payload.Message = "blockchain is valid!"
+	} else {
+		payload.Error = true
+		payload.Message = "block chain invalid.."
 	}
 	return c.JSON(http.StatusOK, payload)
 }

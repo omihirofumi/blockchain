@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/omihirofumi/crypto-demo-with-blockchain/internal/signature"
+	"log"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -97,6 +99,7 @@ type Blockchain struct {
 	transactionPool   []*Transaction
 	chain             []*Block
 	blockchainAddress string
+	mu                sync.Mutex
 }
 
 // NewBlockChain はgenesisブロックを追加したブロックチェーンを生成する
@@ -172,11 +175,15 @@ func (bc *Blockchain) ProofOfWork() int {
 
 // Mining は、マイニングを行うメソッド
 func (bc *Blockchain) Mining() error {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+
 	err := bc.AddTransaction(MINING_SENDER, bc.blockchainAddress, MINING_REWARD, nil, nil)
 	if err != nil {
 		return err
 	}
 	nonce := bc.ProofOfWork()
+	log.Println(nonce)
 	previousHash := bc.LastBlock().Hash()
 	bc.CreateBlock(nonce, previousHash)
 	return nil
@@ -196,6 +203,26 @@ func (bc *Blockchain) GetTotalAmount(blockchainAddress string) float32 {
 		}
 	}
 	return totalAmount
+}
+
+func (bc *Blockchain) ValidChain() bool {
+	chain := bc.chain
+	if len(chain) <= 1 {
+		return true
+	}
+	block := chain[0]
+	for _, b := range chain[1:] {
+		if b.previousHash != block.Hash() {
+			return false
+		}
+
+		if !bc.ValidProof(b.nonce, b.previousHash, b.transactions, MINING_DIFFICULTY) {
+			log.Println(b.nonce)
+			return false
+		}
+		block = b
+	}
+	return true
 }
 
 func (bc *Blockchain) VerifyTransactionSignature(
