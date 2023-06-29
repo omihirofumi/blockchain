@@ -13,6 +13,8 @@ import (
 	"strconv"
 )
 
+var myWallet *wallet.Wallet
+
 // GetWallet は、Walletを生成して返す
 func (ws *WalletServer) GetWallet(c echo.Context) error {
 	w := wallet.NewWallet()

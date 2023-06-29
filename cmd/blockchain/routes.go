@@ -14,7 +14,6 @@ func (bs *BlockchainServer) routes() http.Handler {
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
 	}))
 
-	e.GET("/", bs.HelloWorld)
 	e.GET("/chain", bs.GetChain)
 	e.GET("/amount/:blockchainAddress", bs.GetTotalAmount)
 	e.GET("/mining", bs.Mining)

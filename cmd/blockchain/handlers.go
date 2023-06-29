@@ -14,27 +14,12 @@ const (
 
 var bcCache *block.Blockchain
 
-func (bs *BlockchainServer) HelloWorld(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello, World!")
-}
-
-// GetBlockchain は、ブロックチェーンを返す。
-func (bs *BlockchainServer) GetBlockchain() *block.Blockchain {
-	if bcCache == nil {
-		bs.infoLog.Println("blockchain created")
-		w := wallet.NewWallet()
-		bs.infoLog.Printf("mining address is %s\n", w.BlockchainAddress())
-		bc := block.NewBlockChain(w.BlockchainAddress())
-		bcCache = bc
-		return bc
-	}
-	return bcCache
-}
-
+// GetChain は、クライアントにブロックチェーンを返す。
 func (bs *BlockchainServer) GetChain(c echo.Context) error {
-	return c.JSON(http.StatusOK, bs.GetBlockchain())
+	return c.JSON(http.StatusOK, bs.getBlockchain())
 }
 
+// CreateTransactions は、トランザクションを作成する。
 func (bs *BlockchainServer) CreateTransactions(c echo.Context) error {
 	tr := &block.TransactionRequest{}
 	if err := c.Bind(tr); err != nil {
@@ -57,7 +42,7 @@ func (bs *BlockchainServer) CreateTransactions(c echo.Context) error {
 		bs.errorLog.Println(err)
 		return bs.errResponse(http.StatusBadRequest, err.Error())
 	}
-	bc := bs.GetBlockchain()
+	bc := bs.getBlockchain()
 	err = bc.AddTransaction(*tr.SenderBlockchainAddress, *tr.RecipientBlockchainAddress,
 		*tr.Value, publicKey, sg)
 	if err != nil {
@@ -68,8 +53,9 @@ func (bs *BlockchainServer) CreateTransactions(c echo.Context) error {
 	return c.JSON(http.StatusCreated, bc)
 }
 
+// Mining は、マイニングを実施する。
 func (bs *BlockchainServer) Mining(c echo.Context) error {
-	bc := bs.GetBlockchain()
+	bc := bs.getBlockchain()
 	err := bc.Mining()
 	if err != nil {
 		bs.errorLog.Println(err)
@@ -85,7 +71,7 @@ func (bs *BlockchainServer) Mining(c echo.Context) error {
 // GetTotalAmount は、対象アドレスの総額を計算
 func (bs *BlockchainServer) GetTotalAmount(c echo.Context) error {
 	bcAddr := c.Param("blockchainAddress")
-	bc := bs.GetBlockchain()
+	bc := bs.getBlockchain()
 	amount := bc.GetTotalAmount(bcAddr)
 	payload := struct {
 		Amount float32 `json:"amount"`
@@ -97,7 +83,7 @@ func (bs *BlockchainServer) GetTotalAmount(c echo.Context) error {
 
 // VerifyChain は、チェーンが不正ではないか検証する。
 func (bs *BlockchainServer) VerifyChain(c echo.Context) error {
-	bc := bs.GetBlockchain()
+	bc := bs.getBlockchain()
 	var payload struct {
 		Error   bool   `json:"error"`
 		Message string `json:"message"`
@@ -110,4 +96,17 @@ func (bs *BlockchainServer) VerifyChain(c echo.Context) error {
 		payload.Message = "block chain invalid.."
 	}
 	return c.JSON(http.StatusOK, payload)
+}
+
+// getBlockchain は、ブロックチェーンを返す。
+func (bs *BlockchainServer) getBlockchain() *block.Blockchain {
+	if bcCache == nil {
+		bs.infoLog.Println("blockchain created")
+		w := wallet.NewWallet()
+		bs.infoLog.Printf("mining address is %s\n", w.BlockchainAddress())
+		bc := block.NewBlockChain(w.BlockchainAddress())
+		bcCache = bc
+		return bc
+	}
+	return bcCache
 }

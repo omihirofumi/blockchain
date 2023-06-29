@@ -18,21 +18,6 @@ func (s *Signature) String() string {
 	return fmt.Sprintf("%064x%064x", s.R, s.S)
 }
 
-func string2BigIntTuple(s string) (big.Int, big.Int, error) {
-	if len(s) != 128 {
-		return big.Int{}, big.Int{}, fmt.Errorf("%s", "invalid publickey")
-	}
-	bx, _ := hex.DecodeString(s[:64])
-	by, _ := hex.DecodeString(s[64:])
-
-	var bix big.Int
-	var biy big.Int
-
-	bix.SetBytes(bx)
-	biy.SetBytes(by)
-	return bix, biy, nil
-}
-
 func SignatureFromString(s string) (*Signature, error) {
 	x, y, err := string2BigIntTuple(s)
 	if err != nil {
@@ -55,4 +40,18 @@ func PrivateKeyFromString(s string, publicKey *ecdsa.PublicKey) *ecdsa.PrivateKe
 	var bi big.Int
 	bi.SetBytes(b)
 	return &ecdsa.PrivateKey{PublicKey: *publicKey, D: &bi}
+}
+func string2BigIntTuple(s string) (big.Int, big.Int, error) {
+	if len(s) != 128 {
+		return big.Int{}, big.Int{}, fmt.Errorf("%s", "invalid publickey")
+	}
+	bx, _ := hex.DecodeString(s[:64])
+	by, _ := hex.DecodeString(s[64:])
+
+	var bix big.Int
+	var biy big.Int
+
+	bix.SetBytes(bx)
+	biy.SetBytes(by)
+	return bix, biy, nil
 }

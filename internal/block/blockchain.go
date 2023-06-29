@@ -205,6 +205,7 @@ func (bc *Blockchain) GetTotalAmount(blockchainAddress string) float32 {
 	return totalAmount
 }
 
+// ValidChain は、ブロックチェーンを検証する。
 func (bc *Blockchain) ValidChain() bool {
 	chain := bc.chain
 	if len(chain) <= 1 {
